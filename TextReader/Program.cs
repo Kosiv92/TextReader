@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -14,14 +15,16 @@ namespace TextReader
 
             string directory; //рабочая директория (хранит файл источник и в нее будет записан результат)
             
-            string pathToFile; //путь к рабочей директории хранящей исходный файл
+            string pathToFile; //путь к исходному файлу
+
+            string pathToResult; //путь к результату
 
             bool isFileExist; //проверка существования файла в указанной директории
 
             string fileName = "\\example.txt"; //имя исходного файла
 
             char[] punctuationMarks = new char[] { '.', ',', '!', '?', '"', '«', '»', ':', '(', ')', '•', '-',
-                                                   '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', ';', '–'  }; // список символов которые будут исключаться при выборке слов из текста
+                                                   '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', ';', '–', '…', ' '  }; // список символов которые будут исключаться при выборке слов из текста
 
             Dictionary<string, int> uniqueWords = new Dictionary<string, int>(); //словарь для хранения уникальных слов и подсчета их количества
 
@@ -66,6 +69,7 @@ namespace TextReader
                 }
             }
             uniqueWords = uniqueWords.OrderByDescending(x => x.Value).ToDictionary(x => x.Key, x => x.Value);
+            pathToResult = directory + "\\result.txt";
 
             if (uniqueWords.Count == 0)
             {
@@ -74,7 +78,7 @@ namespace TextReader
             }
             else
             {
-                using (StreamWriter sw = new StreamWriter(directory + "\\result.txt", false, System.Text.Encoding.UTF8))
+                using (StreamWriter sw = new StreamWriter(pathToResult, false, System.Text.Encoding.UTF8))
                 {
                     foreach (var pair in uniqueWords)
                     {
@@ -82,6 +86,7 @@ namespace TextReader
                     }
                 }
                 Console.WriteLine($"Работа приложения завершена. Найдено {uniqueWords.Count} уникальных слов. Результат сохранены в файле \"result.txt\"");
+                Process.Start("notepad", pathToResult); //запускаем файл с результатами
                 Console.ReadKey();
             }
         }
