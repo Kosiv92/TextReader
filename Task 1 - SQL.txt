@@ -1,0 +1,23 @@
+Задание 1 с использованием T-SQL:
+
+Запрос для вывода сотрудника с максимальной заработной платой:
+SELECT NAME, SALARY
+FROM EMPLOYEE
+WHERE SALARY = (SELECT DISTINCT MAX(SALARY) FROM EMPLOYEE);
+ 
+Запрос для вывода отдела, с самой высокой заработной платой между сотрудниками:
+SELECT TOP(1) DEPARTMENT_ID, AVG(SALARY) AS AVG_SALARY
+FROM EMPLOYEE
+GROUP BY  DEPARTMENT_ID
+ORDER BY AVG_SALARY DESC;
+
+Запрос для вывода отдел, с максимальной суммарной зарплатой сотрудников:
+SELECT TOP(1) DEPARTMENT_ID, SUM(SALARY) AS SUM_SALARY
+FROM EMPLOYEE
+GROUP BY  DEPARTMENT_ID
+ORDER BY SUM_SALARY DESC;
+
+Запрос для вывода сотрудника, чье имя начинается на «Р» и заканчивается на «н»:
+SELECT NAME
+FROM EMPLOYEE
+WHERE NAME LIKE ‘Р%н’;
