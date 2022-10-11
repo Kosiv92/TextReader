@@ -4,6 +4,8 @@ using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using TextAnalyzerLib;
+using System.Reflection;
 
 namespace TextReader
 {
@@ -14,7 +16,7 @@ namespace TextReader
             #region Переменные
 
             string directory; //рабочая директория (хранит файл источник и в нее будет записан результат)
-            
+
             string pathToFile; //путь к исходному файлу
 
             string pathToResult; //путь к результату
@@ -23,9 +25,7 @@ namespace TextReader
 
             string fileName = "\\example.txt"; //имя исходного файла
 
-            char[] punctuationMarks = new char[] { '.', ',', '!', '?', '"', '«', '»', ':', '(', ')', '•', '-',
-                                                   '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', ';', '–', '…', ' '  }; // список символов которые будут исключаться при выборке слов из текста
-
+  
             Dictionary<string, int> uniqueWords = new Dictionary<string, int>(); //словарь для хранения уникальных слов и подсчета их количества
 
             #endregion
@@ -47,28 +47,22 @@ namespace TextReader
                     Console.ReadKey();
                 }
             } while (!isFileExist);
-                        
-            
-            using (StreamReader sr = new StreamReader(pathToFile, UnicodeEncoding.UTF8))
-            {
-                string line; //строка считанная из файла, слово считанное из строки
-                string[] words; //массив слов считанных из строки                
 
-                while (sr.Peek() > 0)
-                {
-                    line = sr.ReadLine();
-                    words = line.Split(new char[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
-                    for (int i = 0; i < words.Length; i++)
-                    {
-                        words[i] = words[i].Trim(punctuationMarks).ToLower();
-                        if (String.IsNullOrEmpty(words[i])) continue;
-                        if (uniqueWords.ContainsKey(words[i])) uniqueWords[words[i]]++;
-                        else uniqueWords.Add(words[i], 1);
-                    }
-                    Array.Clear(words);
-                }
+            uniqueWords = GetPrivateMethod(pathToFile);
+
+            Dictionary<string, int> GetPrivateMethod(string path)
+            {
+                var fileHandler = new FileHandler();
+                
+                var type = fileHandler.GetType();
+
+                var methods = type.GetMethods(BindingFlags.NonPublic | BindingFlags.Instance);
+
+                var method = methods.Where(m => m.Name.Contains("Count")).FirstOrDefault();
+
+                return (Dictionary<string, int>)method.Invoke(fileHandler, new object[] { path });
             }
-            uniqueWords = uniqueWords.OrderByDescending(x => x.Value).ToDictionary(x => x.Key, x => x.Value);
+                                    
             pathToResult = directory + "\\result.txt";
 
             if (uniqueWords.Count == 0)
