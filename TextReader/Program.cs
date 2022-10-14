@@ -33,11 +33,7 @@ namespace TextReader
             string elapsedTime; //строковое представление времени выполнения программы
 
             ICollection<KeyValuePair<string, int>> uniqueWords; //словарь для хранения уникальных слов и подсчета их количества
-
-
-            //Dictionary<string, int> uniqueWords = new Dictionary<string, int>(); //словарь для хранения уникальных слов и подсчета их количества
-
-            //ConcurrentDictionary<string, int> uniqueWords = new ConcurrentDictionary<string, int>(); //
+             
 
             #endregion
 
@@ -62,9 +58,9 @@ namespace TextReader
 
             stopWatch.Start();
 
-            //uniqueWords = GetPrivateMethod(pathToFile);
+            //uniqueWords = GetPrivateMethod(pathToFile); //однопоточное выполнение
 
-            uniqueWords = GetPublicMethod(pathToFile);
+            uniqueWords = GetPublicMethod(pathToFile); //многопоточное выполнение
 
             pathToResult = directory + "\\result.txt";
 
@@ -102,7 +98,7 @@ namespace TextReader
                 return (Dictionary<string, int>)method.Invoke(fileHandler, new object[] { path });
             }
 
-            ConcurrentDictionary<string, int> GetPublicMethod(string path)
+            Dictionary<string, int> GetPublicMethod(string path)
             {
                 var fileHandler = new FileHandler();
                 return fileHandler.CountUniqueWordsPL(path);
