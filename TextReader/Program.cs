@@ -58,9 +58,11 @@ namespace TextReader
 
             stopWatch.Start();
 
-            //uniqueWords = GetPrivateMethod(pathToFile); //однопоточное выполнение
+            string[] stringResult = File.ReadAllLines(pathToFile, UnicodeEncoding.UTF8);
 
-            uniqueWords = GetPublicMethod(pathToFile); //многопоточное выполнение
+            //uniqueWords = GetPrivateMethod(stringResult); //однопоточное выполнение
+
+            uniqueWords = GetPublicMethod(stringResult); //многопоточное выполнение
 
             pathToResult = directory + "\\result.txt";
 
@@ -85,7 +87,7 @@ namespace TextReader
                 Console.ReadKey();
             }
 
-            Dictionary<string, int> GetPrivateMethod(string path)
+            Dictionary<string, int> GetPrivateMethod(string[] strings)
             {
                 var fileHandler = new FileHandler();
 
@@ -95,13 +97,13 @@ namespace TextReader
 
                 var method = methods.Where(m => m.Name.Contains("Count")).FirstOrDefault();
 
-                return (Dictionary<string, int>)method.Invoke(fileHandler, new object[] { path });
+                return (Dictionary<string, int>)method.Invoke(fileHandler, new object[] { strings });
             }
 
-            Dictionary<string, int> GetPublicMethod(string path)
+            Dictionary<string, int> GetPublicMethod(string[] strings)
             {
                 var fileHandler = new FileHandler();
-                return fileHandler.CountUniqueWordsPL(path);
+                return fileHandler.CountUniqueWordsPL(strings);
             }
 
             void writeToFile(ICollection<KeyValuePair<string, int>> collection, string path)

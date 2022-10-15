@@ -8,68 +8,80 @@ using System.Threading.Tasks;
 namespace TextAnalyzerLib
 {
     public class FileHandler
-    {
+    {        
+        Dictionary<string, int> _dictionary; //словарь для хранения уникальных слов и подсчета их количества
+
+        ConcurrentDictionary<string, int> _concurrentDictionary; //словарь для хранения уникальных слов и подсчета их количества поддерживающих многопоточную работу
+
         string[] punctuationMarks; // список символов которые будут исключаться при выборке слов из текста                     
 
         string line; //строка считанная из файла, слово считанное из строки
-        string[] words; //массив слов считанных из строки   
+
+        string[] words; //массив слов считанных из строки
+                        
         List<string> lines; //коллекция строк распознанных из файла
+
 
         public FileHandler()
         {
             punctuationMarks = new string[] { ".", ",", "!", "?", "\"", "«", "»", ":", "(", ")", "•", "-", Environment.NewLine, "\t", "=", "’", "“", "№",
                                                    "1", "2", "3", "4", "5", "6", "7", "8", "9", "0", ";", "–", "…", "…", " ", "  ", "#", "&", "[", "]", "„"};
+
+            _dictionary = new Dictionary<string, int>();
+
+            _concurrentDictionary = new ConcurrentDictionary<string, int>();
         }
 
         /// <summary>
         /// Подсчет уникальных слов в анализируемом файле
         /// </summary>
-        /// <param name="pathToFile">Путь к файлу формата .txt</param>
+        /// <param name="strings">Массив строк содержащих искомые слова</param>
         /// <returns>Словарь с уникальными словами в качестве ключей и количеством их повторений в файле в качестве значений</returns>
-        private Dictionary<string, int> CountUniqueWords(string pathToFile)
-        {
-            Dictionary<string, int> uniqueWords = new Dictionary<string, int>(); ; //словарь для хранения уникальных слов и подсчета их количества
-
-            using (StreamReader sr = new StreamReader(pathToFile, UnicodeEncoding.UTF8))
+        private Dictionary<string, int> CountUniqueWords(string[] strings)
+        {            
+            for(int i = 0; i < strings.Length; i++)
             {
-                while (sr.Peek() > 0)
+                words = strings[i].Split(new char[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
+                for (int y = 0; y < words.Length; y++)
                 {
-                    line = sr.ReadLine();
-                    words = line.Split(new char[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
-                    for (int i = 0; i < words.Length - 1; i++)
-                    {
-                        words[i] = words[i].DeleteSupplySymbols(punctuationMarks).ToLower();
-                        if (String.IsNullOrEmpty(words[i]) || String.IsNullOrWhiteSpace(words[i])) continue;
-                        if (uniqueWords.ContainsKey(words[i])) uniqueWords[words[i]]++;
-                        else uniqueWords.Add(words[i], 1);
-                    }
-                    Array.Clear(words);
+                    words[y] = words[y].DeleteSupplySymbols(punctuationMarks).ToLower();
+                    if (String.IsNullOrEmpty(words[y]) || String.IsNullOrWhiteSpace(words[y])) continue;
+                    if (_dictionary.ContainsKey(words[y])) _dictionary[words[y]]++;
+                    else _dictionary.Add(words[y], 1);
                 }
-            }
-            return uniqueWords.OrderByDescending(x => x.Value).ToDictionary(x => x.Key, x => x.Value);
+                Array.Clear(words);
+            }                        
+            return _dictionary.OrderByDescending(x => x.Value).ToDictionary(x => x.Key, x => x.Value);
         }
 
-        public Dictionary<string, int> CountUniqueWordsPL(string pathToFile)
+        /// <summary>
+        /// Подсчет уникальных слов в анализируемом файле в многопоточном режиме
+        /// </summary>
+        /// <param name="strings">Массив строк содержащих искомые слова</param>
+        /// <returns>Словарь с уникальными словами в качестве ключей и количеством их повторений в файле в качестве значений</returns>
+        public Dictionary<string, int> CountUniqueWordsPL(string[] strings)
+        {                 
+            ParallelLoopResult result = Parallel.ForEach(strings, SaveWordsToConcurrentDictionary);
+
+            return _concurrentDictionary.OrderByDescending(x => x.Value).ToDictionary(x => x.Key, x => x.Value);                        
+        }
+
+        /// <summary>
+        /// Поиск отдельных слов и строке и сохранение их в словарь
+        /// </summary>
+        /// <param name="str">Строка для анализа наличия слов</param>
+        private void SaveWordsToConcurrentDictionary(string str)
         {
-            ConcurrentDictionary<string, int> uniqueWords = new ConcurrentDictionary<string, int>();
-                        
-            string[] stringResult = File.ReadAllLines(pathToFile, UnicodeEncoding.UTF8);
+            words = str.Split(new char[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
 
-            ParallelLoopResult result = Parallel.ForEach(stringResult, str =>
+            foreach (string word in words)
             {
-                words = str.Split(new char[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
-
-                foreach(string word in words)
-                {
-                    string wordForWork = word;
-                    wordForWork = wordForWork.DeleteSupplySymbols(punctuationMarks).ToLower();
-                    if (String.IsNullOrEmpty(wordForWork) || String.IsNullOrWhiteSpace(wordForWork))
-                        return;
-                    uniqueWords.AddOrUpdate(wordForWork, 1, (wordForWork, u) => u + 1);
-                }                
-            });
-
-            return uniqueWords.OrderByDescending(x => x.Value).ToDictionary(x => x.Key, x => x.Value);                        
-        }
+                string wordForWork = word;
+                wordForWork = wordForWork.DeleteSupplySymbols(punctuationMarks).ToLower();
+                if (String.IsNullOrEmpty(wordForWork) || String.IsNullOrWhiteSpace(wordForWork))
+                    return;
+                _concurrentDictionary.AddOrUpdate(word, 1, (word, u) => u + 1);
+            }
+        }                
     }
 }
