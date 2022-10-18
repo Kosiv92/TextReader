@@ -8,7 +8,7 @@ using System.Threading.Tasks;
 namespace TextAnalyzerLib
 {
     public class FileHandler
-    {        
+    {
         Dictionary<string, int> _dictionary; //словарь для хранения уникальных слов и подсчета их количества
 
         ConcurrentDictionary<string, int> _concurrentDictionary; //словарь для хранения уникальных слов и подсчета их количества поддерживающих многопоточную работу
@@ -18,7 +18,7 @@ namespace TextAnalyzerLib
         string line; //строка считанная из файла, слово считанное из строки
 
         string[] words; //массив слов считанных из строки
-                        
+
         List<string> lines; //коллекция строк распознанных из файла
 
 
@@ -38,8 +38,8 @@ namespace TextAnalyzerLib
         /// <param name="strings">Массив строк содержащих искомые слова</param>
         /// <returns>Словарь с уникальными словами в качестве ключей и количеством их повторений в файле в качестве значений</returns>
         private Dictionary<string, int> CountUniqueWords(string[] strings)
-        {            
-            for(int i = 0; i < strings.Length; i++)
+        {
+            for (int i = 0; i < strings.Length; i++)
             {
                 words = strings[i].Split(new char[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
                 for (int y = 0; y < words.Length; y++)
@@ -50,7 +50,7 @@ namespace TextAnalyzerLib
                     else _dictionary.Add(words[y], 1);
                 }
                 Array.Clear(words);
-            }                        
+            }
             return _dictionary.OrderByDescending(x => x.Value).ToDictionary(x => x.Key, x => x.Value);
         }
 
@@ -60,12 +60,12 @@ namespace TextAnalyzerLib
         /// <param name="strings">Массив строк содержащих искомые слова</param>
         /// <returns>Словарь с уникальными словами в качестве ключей и количеством их повторений в файле в качестве значений</returns>
         public Dictionary<string, int> CountUniqueWordsPL(string[] strings)
-        {                 
+        {
             ParallelLoopResult result = Parallel.ForEach(strings, SaveWordsToConcurrentDictionary);
 
-            return _concurrentDictionary.OrderByDescending(x => x.Value).ToDictionary(x => x.Key, x => x.Value);                        
+            return _concurrentDictionary.OrderByDescending(x => x.Value).ToDictionary(x => x.Key, x => x.Value);
         }
-
+           
         /// <summary>
         /// Поиск отдельных слов и строке и сохранение их в словарь
         /// </summary>
@@ -82,6 +82,6 @@ namespace TextAnalyzerLib
                     return;
                 _concurrentDictionary.AddOrUpdate(word, 1, (word, u) => u + 1);
             }
-        }                
+        }
     }
 }

@@ -4,15 +4,17 @@ using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using TextAnalyzerLib;
+//using TextAnalyzerLib;
 using System.Reflection;
 using System.Collections.Concurrent;
+using System.Text.Json;
+using System.Net.Http.Json;
 
 namespace TextReader
 {
     public static class Programm
     {
-        static void Main()
+        static async Task Main()
         {
             #region Переменные
 
@@ -32,40 +34,45 @@ namespace TextReader
 
             string elapsedTime; //строковое представление времени выполнения программы
 
-            ICollection<KeyValuePair<string, int>> uniqueWords; //словарь для хранения уникальных слов и подсчета их количества
-             
+            ICollection<KeyValuePair<string, int>> uniqueWords; //словарь для хранения уникальных слов и подсчета их количества                        
 
             #endregion
 
-            Console.Write($"Укажите путь к папке, хранящей файл с именем \"{fileName}\" в формате \"D:\\Directory\": ");
-            do
-            {
-                directory = Console.ReadLine();
-                pathToFile = directory + fileName;
-                isFileExist = File.Exists(pathToFile);
-                if (!isFileExist)
-                {
-                    Console.WriteLine($"Файл \"{fileName}\" отсутствует по указанному пути. Необходимо указать путь к папке с файлом в формате \"D:\\Directory\\\"");
-                    Console.Write("Попробуйте снова: ");
-                }
-                else
-                {
-                    Console.WriteLine("Файл найден. Начните обработку нажатием любой клавиши");
-                    Console.ReadKey();
-                }
-            } while (!isFileExist);
+            HttpClient client = new HttpClient();
 
+            client.BaseAddress = new Uri("http://localhost:5140");
+
+            //var result = client.GetStringAsync("http://localhost:5140/api/Text");
+
+            ChooseFile();
 
             stopWatch.Start();
 
-            string[] stringResult = File.ReadAllLines(pathToFile, UnicodeEncoding.UTF8);
+            string[] stringsResult = File.ReadAllLines(pathToFile, UnicodeEncoding.UTF8);
+
+            var request = new HttpRequestObject();
+            request.TextStrings = stringsResult;
+
+            string jsonString = JsonSerializer.Serialize(request);
+            #region oldMethods
+
+            //string allText = File.ReadAllText(pathToFile, UnicodeEncoding.UTF8);
 
             //uniqueWords = GetPrivateMethod(stringResult); //однопоточное выполнение
 
-            uniqueWords = GetPublicMethod(stringResult); //многопоточное выполнение
+            //uniqueWords = GetPublicMethod(stringResult); //многопоточное выполнение
+
+            //StringContent stringContent = new StringContent(allText, UnicodeEncoding.UTF8);
+
+            #endregion
+
+            string response = await HttpPost("http://localhost:5140/api/Text", jsonString);
+
+            var httpResponseObject = JsonSerializer.Deserialize<HttpResponseObject>(response);
+
+            uniqueWords = httpResponseObject.WordsCountDto;
 
             pathToResult = directory + "\\result.txt";
-
 
 
             if (uniqueWords.Count == 0)
@@ -75,7 +82,7 @@ namespace TextReader
             }
             else
             {
-                writeToFile(uniqueWords, pathToResult);                
+                writeToFile(uniqueWords, pathToResult);
                 stopWatch.Stop();
                 ts = stopWatch.Elapsed;
                 elapsedTime = String.Format("{0:00}:{1:00}:{2:00}.{3:00}",
@@ -87,23 +94,41 @@ namespace TextReader
                 Console.ReadKey();
             }
 
-            Dictionary<string, int> GetPrivateMethod(string[] strings)
+            async Task<String> HttpPost(string url, string content, string mediaType = "application/json")
             {
-                var fileHandler = new FileHandler();
+                HttpContent httrContent = new StringContent(content, UnicodeEncoding.UTF8, mediaType);
+                var client = new HttpClient();
+                using var response = await client.PostAsync(url, httrContent);
+                var responseContent = await response.Content.ReadAsStringAsync();
+                var httpResponseObject = JsonSerializer.Deserialize<HttpResponseObject>(responseContent);
 
-                var type = fileHandler.GetType();
+                //var result = await client.GetFromJsonAsync<HttpResponseObject>(url, );
+                                
+                
+                Console.WriteLine(httpResponseObject);
 
-                var methods = type.GetMethods(BindingFlags.NonPublic | BindingFlags.Instance);
-
-                var method = methods.Where(m => m.Name.Contains("Count")).FirstOrDefault();
-
-                return (Dictionary<string, int>)method.Invoke(fileHandler, new object[] { strings });
+                return "End";
             }
 
-            Dictionary<string, int> GetPublicMethod(string[] strings)
+            void ChooseFile()
             {
-                var fileHandler = new FileHandler();
-                return fileHandler.CountUniqueWordsPL(strings);
+                Console.Write($"Укажите путь к папке, хранящей файл с именем \"{fileName}\" в формате \"D:\\Directory\": ");
+                do
+                {
+                    directory = Console.ReadLine();
+                    pathToFile = directory + fileName;
+                    isFileExist = File.Exists(pathToFile);
+                    if (!isFileExist)
+                    {
+                        Console.WriteLine($"Файл \"{fileName}\" отсутствует по указанному пути. Необходимо указать путь к папке с файлом в формате \"D:\\Directory\\\"");
+                        Console.Write("Попробуйте снова: ");
+                    }
+                    else
+                    {
+                        Console.WriteLine("Файл найден. Начните обработку нажатием любой клавиши");
+                        Console.ReadKey();
+                    }
+                } while (!isFileExist);
             }
 
             void writeToFile(ICollection<KeyValuePair<string, int>> collection, string path)
@@ -117,6 +142,18 @@ namespace TextReader
                 }
             }
         }
+    }
+
+    
+    public class HttpRequestObject
+    {
+        public string[] TextStrings { get; set; }
+    }
+
+    
+    public class HttpResponseObject
+    {
+        public Dictionary<string, int> WordsCountDto { get; set; }
     }
 
 }
