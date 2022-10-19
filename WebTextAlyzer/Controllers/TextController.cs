@@ -1,6 +1,6 @@
 ﻿using Microsoft.AspNetCore.Mvc;
-using System.Text.Json;
 using TextAnalyzerLib;
+using CommonLibrary;
 
 namespace WebTextAlyzer.Controllers
 {
@@ -18,49 +18,30 @@ namespace WebTextAlyzer.Controllers
             _strings = new List<string>();
         }
 
+        /// <summary>
+        /// Подчет уникальных слов в массиве строк
+        /// </summary>
+        /// <param name="requestObject">Объект хранящий массив строк</param>
+        /// <returns>Json-файл с результатами подсчета уникальных слов</returns>
         [HttpPost]
-        public HttpResponseObject GetUniqueWords([FromBody] HttpRequestObject requestObject)
+        public ActionResult<WordsDto> GetUniqueWords([FromBody] StringsDto requestObject)
         {
-            //var rm = JsonSerializer.Deserialize<HttpRequestMessage>(message);
-            //var stringContent = rm.Content;
-            //string content = stringContent.ReadAsStringAsync().Result;
-            //var request = JsonSerializer.Deserialize<HttpRequestObject>(content);
-
-            var dictionary = _fileHandler.CountUniqueWordsPL(requestObject.TextStrings);
-            var response = new HttpResponseObject();
-            response.WordsCountDto = dictionary;
+            var dictionary = _fileHandler.CountUniqueWordsPL(requestObject.Strings);
+            var response = new WordsDto();
+            response.wordsCount = dictionary;
             return response;
         }
 
+        /// <summary>
+        /// Проверка доступности сервера
+        /// </summary>
+        /// <returns>Результат get-запроса</returns>
         [HttpGet]
-        public HttpResponseObject IsAvailable()
-        {
-            var ok = new HttpResponseObject();
-            ok.WordsCountDto.Add("hello", 2);
-            ok.WordsCountDto.Add("bye", 5);
-
-
-            return ok;
-
-
+        public ActionResult<String> IsAvailable()
+        {            
+            return Ok();
         }
 
+    }   
 
-    }
-
-    
-    public class HttpRequestObject
-    {
-        public string[] TextStrings { get; set; }
-    }
-
-    
-    public class HttpResponseObject
-    {
-        public HttpResponseObject()
-        {
-            WordsCountDto = new Dictionary<string, int>();
-        }
-        public Dictionary<string, int> WordsCountDto { get; set; }
-    }
 }

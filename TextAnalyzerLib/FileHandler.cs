@@ -24,7 +24,7 @@ namespace TextAnalyzerLib
 
         public FileHandler()
         {
-            punctuationMarks = new string[] { ".", ",", "!", "?", "\"", "«", "»", ":", "(", ")", "•", "-", Environment.NewLine, "\t", "=", "’", "“", "№",
+            punctuationMarks = new string[] { ".", ",", "!", "?", "\"", "«", "»", ":", "(", ")", "•", "-", "–", ",", ".", Environment.NewLine, "\t", "=", "’", "“", "№",
                                                    "1", "2", "3", "4", "5", "6", "7", "8", "9", "0", ";", "–", "…", "…", " ", "  ", "#", "&", "[", "]", "„"};
 
             _dictionary = new Dictionary<string, int>();
@@ -43,7 +43,7 @@ namespace TextAnalyzerLib
             {
                 words = strings[i].Split(new char[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
                 for (int y = 0; y < words.Length; y++)
-                {
+                {                    
                     words[y] = words[y].DeleteSupplySymbols(punctuationMarks).ToLower();
                     if (String.IsNullOrEmpty(words[y]) || String.IsNullOrWhiteSpace(words[y])) continue;
                     if (_dictionary.ContainsKey(words[y])) _dictionary[words[y]]++;
@@ -77,10 +77,10 @@ namespace TextAnalyzerLib
             foreach (string word in words)
             {
                 string wordForWork = word;
-                wordForWork = wordForWork.DeleteSupplySymbols(punctuationMarks).ToLower();
+                wordForWork = wordForWork.ToLower().DeleteSupplySymbols(punctuationMarks);
                 if (String.IsNullOrEmpty(wordForWork) || String.IsNullOrWhiteSpace(wordForWork))
                     return;
-                _concurrentDictionary.AddOrUpdate(word, 1, (word, u) => u + 1);
+                _concurrentDictionary.AddOrUpdate(wordForWork, 1, (wordForWork, u) => u + 1);
             }
         }
     }

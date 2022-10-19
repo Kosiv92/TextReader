@@ -4,11 +4,10 @@ using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-//using TextAnalyzerLib;
-using System.Reflection;
 using System.Collections.Concurrent;
 using System.Text.Json;
 using System.Net.Http.Json;
+using CommonLibrary;
 
 namespace TextReader
 {
@@ -34,49 +33,43 @@ namespace TextReader
 
             string elapsedTime; //строковое представление времени выполнения программы
 
-            ICollection<KeyValuePair<string, int>> uniqueWords; //словарь для хранения уникальных слов и подсчета их количества                        
+            ICollection<KeyValuePair<string, int>> uniqueWords; //словарь для хранения уникальных слов и подсчета их количества
+                                                                //
+            string uri = "http://localhost:5140/api/Text"; //адрес сервера для направления запросов
 
             #endregion
 
-            HttpClient client = new HttpClient();
+            if (IsServerAvailable().Result) Console.WriteLine("Server is available"); //проверка доступности web-api
+            else
+            {
+                Console.WriteLine("Server is not available. Application will be closed");
+                Console.ReadKey();
+                Environment.Exit(0);
+            }
+            
 
-            client.BaseAddress = new Uri("http://localhost:5140");
-
-            //var result = client.GetStringAsync("http://localhost:5140/api/Text");
-
-            ChooseFile();
+            ChooseFile(); //выбираем файл
 
             stopWatch.Start();
 
-            string[] stringsResult = File.ReadAllLines(pathToFile, UnicodeEncoding.UTF8);
+            string[] stringsResult = File.ReadAllLines(pathToFile, UnicodeEncoding.UTF8); //получаем масси строк из файла
 
-            var request = new HttpRequestObject();
-            request.TextStrings = stringsResult;
+            var request = new StringsDto(); //формируем библиотечный объект для отправки запроса на сервер
+            request.Strings = stringsResult; //помещаем в объект данные которые необходимо обработать
+            string jsonString = JsonSerializer.Serialize(request); //сериализуем объект в json-строку
 
-            string jsonString = JsonSerializer.Serialize(request);
-            #region oldMethods
+            string response = await HttpPost(uri, jsonString); //получаес от сервера обработанные данные через post-запрос
 
-            //string allText = File.ReadAllText(pathToFile, UnicodeEncoding.UTF8);
+            var httpResponseObject = JsonSerializer.Deserialize<WordsDto>(response); //десериализуем данные
 
-            //uniqueWords = GetPrivateMethod(stringResult); //однопоточное выполнение
-
-            //uniqueWords = GetPublicMethod(stringResult); //многопоточное выполнение
-
-            //StringContent stringContent = new StringContent(allText, UnicodeEncoding.UTF8);
-
-            #endregion
-
-            string response = await HttpPost("http://localhost:5140/api/Text", jsonString);
-
-            var httpResponseObject = JsonSerializer.Deserialize<HttpResponseObject>(response);
-
-            uniqueWords = httpResponseObject.WordsCountDto;
+            uniqueWords = httpResponseObject.wordsCount;
 
             pathToResult = directory + "\\result.txt";
 
 
             if (uniqueWords.Count == 0)
             {
+                stopWatch.Stop();
                 Console.WriteLine("Отсутствуют найденные слова! Работа приложения завершена!");
                 Console.ReadKey();
             }
@@ -94,23 +87,18 @@ namespace TextReader
                 Console.ReadKey();
             }
 
-            async Task<String> HttpPost(string url, string content, string mediaType = "application/json")
+
+            async Task<String> HttpPost(string url, string content, string mediaType = "application/json") //post-запрос на сервер и получение данных в видн json-строки
             {
                 HttpContent httrContent = new StringContent(content, UnicodeEncoding.UTF8, mediaType);
                 var client = new HttpClient();
                 using var response = await client.PostAsync(url, httrContent);
                 var responseContent = await response.Content.ReadAsStringAsync();
-                var httpResponseObject = JsonSerializer.Deserialize<HttpResponseObject>(responseContent);
-
-                //var result = await client.GetFromJsonAsync<HttpResponseObject>(url, );
-                                
-                
-                Console.WriteLine(httpResponseObject);
-
-                return "End";
+                return responseContent;
             }
 
-            void ChooseFile()
+
+            void ChooseFile() //выбор файла для считывания текста
             {
                 Console.Write($"Укажите путь к папке, хранящей файл с именем \"{fileName}\" в формате \"D:\\Directory\": ");
                 do
@@ -131,7 +119,8 @@ namespace TextReader
                 } while (!isFileExist);
             }
 
-            void writeToFile(ICollection<KeyValuePair<string, int>> collection, string path)
+
+            void writeToFile(ICollection<KeyValuePair<string, int>> collection, string path) //запись словаря в файл
             {
                 using (StreamWriter sw = new StreamWriter(path, false, System.Text.Encoding.UTF8))
                 {
@@ -141,19 +130,16 @@ namespace TextReader
                     }
                 }
             }
+
+
+            async Task<bool> IsServerAvailable() //проверка доступности сервера
+            {
+                var testConnectionResult = await new HttpClient().GetAsync(uri);
+
+                if (testConnectionResult.StatusCode == System.Net.HttpStatusCode.OK) return true;
+                else return false;
+            }
         }
-    }
-
-    
-    public class HttpRequestObject
-    {
-        public string[] TextStrings { get; set; }
-    }
-
-    
-    public class HttpResponseObject
-    {
-        public Dictionary<string, int> WordsCountDto { get; set; }
     }
 
 }
